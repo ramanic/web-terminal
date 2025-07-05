@@ -1,6 +1,4 @@
-// WebTerminal.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { Terminal as LucideTerminal } from "lucide-react";
 import { Terminal as XTerminal } from "xterm";
 import "xterm/css/xterm.css";
 
@@ -9,7 +7,11 @@ interface Message {
   data: string;
 }
 
-const WebTerminal = () => {
+interface Props {
+  passkey: string | null;
+}
+
+const WebTerminal: React.FC<Props> = ({ passkey }) => {
   const [isConnecting, setIsConnecting] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -17,27 +19,24 @@ const WebTerminal = () => {
   const xtermContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Initialize xterm
     const term = new XTerminal({
       theme: {
         background: "#000000",
-        foreground: "#00ff00",
+        foreground: "#f2f2f2",
+        cursor: "#f2f2f2",
       },
       fontFamily: "monospace",
       fontSize: 14,
       cursorBlink: true,
+      disableStdin: false,
     });
 
     xtermRef.current = term;
 
     if (xtermContainerRef.current) {
       term.open(xtermContainerRef.current);
-      term.writeln("╔════════════════════════════════════════╗");
-      term.writeln("║ Welcome to Web Terminal                ║");
-      term.writeln("╚════════════════════════════════════════╝");
     }
 
-    // Handle user input
     term.onData((data) => {
       sendMessage("input", data);
     });
@@ -51,100 +50,62 @@ const WebTerminal = () => {
   }, []);
 
   const connectWebSocket = () => {
-    try {
-      const ws = new WebSocket("ws://localhost:8080/ws");
+    const url = `ws://localhost:8080/ws${
+      passkey ? `?key=${encodeURIComponent(passkey)}` : ""
+    }`;
+    const ws = new WebSocket(url);
 
-      ws.onopen = () => {
-        setIsConnecting(false);
-        setIsConnected(true);
-        xtermRef.current?.writeln("\r\n[✔] Connected to terminal server");
-      };
+    ws.onopen = () => {
+      setIsConnecting(false);
+      setIsConnected(true);
+      xtermRef.current?.writeln("\r\n[connected]");
+    };
 
-      ws.onmessage = (event) => {
-        const message: Message = JSON.parse(event.data);
-        handleMessage(message);
-      };
+    ws.onmessage = (event) => {
+      const message: Message = JSON.parse(event.data);
+      if (message.type === "output") {
+        xtermRef.current?.write(message.data);
+      }
+    };
 
-      ws.onclose = () => {
-        setIsConnecting(false);
-        setIsConnected(false);
-        xtermRef.current?.writeln("\r\n[✖] Connection closed");
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        setIsConnecting(false);
-        setIsConnected(false);
-        xtermRef.current?.writeln("\r\n[!] Connection error");
-      };
-
-      wsRef.current = ws;
-    } catch (error) {
-      console.error("Failed to connect:", error);
+    ws.onclose = () => {
       setIsConnecting(false);
       setIsConnected(false);
-      xtermRef.current?.writeln("\r\n[!] Failed to connect to terminal server");
-    }
-  };
+      xtermRef.current?.writeln("\r\n[connection closed]");
+    };
 
-  const handleMessage = (message: Message) => {
-    switch (message.type) {
-      case "output":
-        xtermRef.current?.write(message.data);
-        break;
-      case "pong":
-        break;
-      default:
-        console.warn("Unknown message type:", message.type);
-    }
+    ws.onerror = () => {
+      setIsConnecting(false);
+      setIsConnected(false);
+      xtermRef.current?.writeln("\r\n[error connecting]");
+    };
+
+    wsRef.current = ws;
   };
 
   const sendMessage = (type: string, data: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      const message: Message = { type, data };
-      wsRef.current.send(JSON.stringify(message));
+      wsRef.current.send(JSON.stringify({ type, data }));
     }
   };
+  if (!isConnected) {
+    return (
+      <div className="h-screen w-screen bg-black text-white flex items-center justify-center">
+        No connection found
+      </div>
+    );
+  }
 
   return (
-    <div className="h-screen bg-gray-900 text-green-400 font-mono text-sm flex flex-col">
-      {/* Terminal Header */}
-      <div className="bg-gray-800 border-b border-gray-700 px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <LucideTerminal className="w-4 h-4" />
-          <span className="text-gray-300">Web Terminal</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div
-            className={`w-2 h-2 rounded-full ${
-              isConnected ? "bg-green-500" : "bg-red-500"
-            }`}
-          ></div>
-          <span className="text-xs text-gray-400">
-            {isConnecting
-              ? "Connecting..."
-              : isConnected
-              ? "Connected"
-              : "Disconnected"}
-          </span>
-        </div>
-      </div>
-
-      {/* Xterm Terminal */}
+    <div className="h-screen w-screen bg-black text-white relative">
       <div
-        className="flex-1 bg-black overflow-hidden"
         ref={xtermContainerRef}
+        className="h-full w-full"
+        style={{ fontSize: "14px", lineHeight: "1.4" }}
       />
-
-      {/* Connection Overlay */}
       {isConnecting && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
-          <div className="bg-gray-800 border border-gray-600 rounded-lg p-6 flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-cyan-400 border-t-transparent"></div>
-            <span className="text-cyan-400">
-              Connecting to terminal server...
-            </span>
-          </div>
+        <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center text-white text-sm">
+          Connecting...
         </div>
       )}
     </div>
