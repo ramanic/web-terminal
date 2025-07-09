@@ -22,6 +22,8 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, passKey string) {
 	// Get the passkey from the query parameter
 	clientPassKey := r.URL.Query().Get("passkey")
 
+
+
 	if clientPassKey != passKey {
 		log.Printf("Unauthorized WebSocket connection attempt from %s", r.RemoteAddr)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)

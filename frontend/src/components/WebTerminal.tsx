@@ -11,15 +11,23 @@ interface Message {
 
 type Props = {
   passkey: string;
+  onError: (error: string) => void;
 };
 const WebTerminal = (props: Props) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { passkey } = props;
+  const { passkey, onError } = props;
   const [isConnecting, setIsConnecting] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const xtermRef = useRef<XTerminal | null>(null);
   const xtermContainerRef = useRef<HTMLDivElement>(null);
+
+  const waitAndCheck = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (wsRef.current?.readyState !== 1)
+      return onError(
+        "Error connecting to terminal server, Please check your password and internet connection. "
+      );
+  };
 
   useEffect(() => {
     // Initialize xterm
@@ -39,9 +47,6 @@ const WebTerminal = (props: Props) => {
 
     if (xtermContainerRef.current) {
       term.open(xtermContainerRef.current);
-      term.writeln("╔════════════════════════════════════════╗");
-      term.writeln("║ Welcome to Web Terminal                ║");
-      term.writeln("╚════════════════════════════════════════╝");
     }
 
     // Handle user input
@@ -60,7 +65,7 @@ const WebTerminal = (props: Props) => {
 
   const connectWebSocket = () => {
     try {
-      const ws = new WebSocket("ws://localhost:8080/ws");
+      const ws = new WebSocket(`ws://localhost:8080/ws?passkey=${passkey}`);
 
       ws.onopen = () => {
         setIsConnecting(false);
@@ -79,19 +84,25 @@ const WebTerminal = (props: Props) => {
         // xtermRef.current?.writeln("\r\n[✖] Connection closed");
       };
 
-      ws.onerror = (error) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ws.onerror = (error: any) => {
         console.error("WebSocket error:", error);
         setIsConnecting(false);
         setIsConnected(false);
+        waitAndCheck();
         // xtermRef.current?.writeln("\r\n[!] Connection error");
       };
 
       wsRef.current = ws;
-    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
       console.error("Failed to connect:", error);
       setIsConnecting(false);
       setIsConnected(false);
-      xtermRef.current?.writeln("\r\n[!] Failed to connect to terminal server");
+      onError(
+        error?.message ||
+          "Error connecting to terminal server, Please check your password and internet connection. "
+      );
     }
   };
 

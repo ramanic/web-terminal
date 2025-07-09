@@ -5,11 +5,21 @@ import WebTerminal from "./components/WebTerminal";
 
 const App = () => {
   const [passkey, setPasskey] = useState<string | null>(null);
-  console.log(passkey);
+  const [error, setError] = useState<string | null>(null);
+  const onError = (error: string) => {
+    setError(error);
+    setPasskey(null);
+  };
+
+  const onSumbmit = (password: string | null) => {
+    setPasskey(password);
+    setError(null);
+  };
+
   return passkey === null ? (
-    <LoginScreen onSubmit={setPasskey} />
+    <LoginScreen onSubmit={onSumbmit} error={error} />
   ) : (
-    <WebTerminal passkey={passkey} />
+    <WebTerminal onError={onError} passkey={passkey} />
   );
 };
 

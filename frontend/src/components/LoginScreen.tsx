@@ -2,9 +2,10 @@ import React, { useState } from "react";
 
 interface Props {
   onSubmit: (passkey: string | null) => void;
+  error: string | null;
 }
 
-const LoginScreen: React.FC<Props> = ({ onSubmit }) => {
+const LoginScreen: React.FC<Props> = ({ onSubmit, error }) => {
   const [passkey, setPasskey] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,6 +33,7 @@ const LoginScreen: React.FC<Props> = ({ onSubmit }) => {
         >
           Connect
         </button>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
       </form>
     </div>
   );
