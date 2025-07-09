@@ -4,6 +4,7 @@ import { Terminal as LucideTerminal } from "lucide-react";
 import { Terminal as XTerminal } from "xterm";
 import "xterm/css/xterm.css";
 import { FitAddon } from "@xterm/addon-fit";
+import ENDPOINTS from "../const/endpoints";
 interface Message {
   type: string;
   data: string;
@@ -65,7 +66,11 @@ const WebTerminal = (props: Props) => {
 
   const connectWebSocket = () => {
     try {
-      const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws?passkey=${passkey}`);
+      const ws = new WebSocket(
+        `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${
+          ENDPOINTS.BASE_URL
+        }/ws?passkey=${passkey}`
+      );
 
       ws.onopen = () => {
         setIsConnecting(false);
