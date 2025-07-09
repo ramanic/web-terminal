@@ -1,10 +1,11 @@
 package server
 
 import (
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
-
 	"web-terminal/backend/pkg/config"
 	"web-terminal/backend/pkg/websocket"
 )
@@ -12,12 +13,14 @@ import (
 // Server holds the application server configuration
 type Server struct {
 	Config *config.Config
+	Content embed.FS
 }
 
 // NewServer creates a new Server instance
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.Config, content embed.FS) *Server {
 	return &Server{
 		Config: cfg,
+		Content: content,
 	}
 }
 
@@ -26,7 +29,13 @@ func (s *Server) Start() {
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		websocket.HandleWebSocket(w, r, s.Config.PassKey)
 	})
-	http.HandleFunc("/", s.handleHome)
+
+	// Subdirectory inside embed.FS
+	buildFs, err := fs.Sub(s.Content, "web")
+	if err != nil {
+		panic(err)
+	}
+	http.Handle("/", http.FileServer(http.FS(buildFs)))
 
 	port := s.Config.Port
 	if port == "" {
@@ -36,17 +45,3 @@ func (s *Server) Start() {
 	fmt.Printf("Server starting on :%s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
-
-func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-	if r.Method == "OPTIONS" {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	fmt.Fprintf(w, "WebSocket Terminal Server is running!")
-}
-

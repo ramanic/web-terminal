@@ -65,7 +65,7 @@ const WebTerminal = (props: Props) => {
 
   const connectWebSocket = () => {
     try {
-      const ws = new WebSocket(`ws://localhost:8080/ws?passkey=${passkey}`);
+      const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws?passkey=${passkey}`);
 
       ws.onopen = () => {
         setIsConnecting(false);
